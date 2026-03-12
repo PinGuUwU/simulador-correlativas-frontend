@@ -7,7 +7,7 @@ import ChatBot from '../pages/ChatBot.jsx'
 const Rutas = ({ plan }) => {
     const componentesRutas = useRoutes([
         {
-            path: "/correlativas",
+            path: "/",
             element: <Correlativas plan={plan} />
         },
         {

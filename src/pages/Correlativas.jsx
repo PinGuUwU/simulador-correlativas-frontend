@@ -1,8 +1,8 @@
 
 import { useEffect, useRef, useState } from 'react';
-import MateriasList from '../components/Correlativas/MateriasList';
-import MateriasProgreso from '../components/Correlativas/MateriasProgreso';
-import ProgresoTotal from '../components/Correlativas/ProgresoTotal';
+import MateriasList from '../components/Correlativas/MateriasList.jsx';
+import MateriasProgreso from '../components/Correlativas/MateriasProgreso.jsx';
+import ProgresoTotal from '../components/Correlativas/ProgresoTotal.jsx';
 import { Spinner } from '@heroui/react';
 
 

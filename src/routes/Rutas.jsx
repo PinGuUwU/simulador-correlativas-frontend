@@ -1,22 +1,32 @@
 import React from 'react'
 import { useRoutes } from 'react-router-dom'
-import Correlativas from '../pages/Correlativas.jsx'
-import Equivalencias from '../pages/Equivalencias.jsx'
-import ChatBot from '../pages/ChatBot.jsx'
+import Progreso from '../pages/Progreso'
+import Equivalencias from '../pages/Equivalencias'
+import ChatBot from '../pages/Chatbot'
+import Inicio from '../pages/Inicio'
+import Simulador from '../pages/Simulador'
 
 const Rutas = ({ plan }) => {
     const componentesRutas = useRoutes([
         {
             path: "/",
-            element: <Correlativas plan={plan} />
+            element: <Inicio />
+        },
+        {
+            path: "/progreso",
+            element: <Progreso plan={plan} />
+        },
+        {
+            path: "/simulador",
+            element: <Simulador />
         },
         {
             path: "/equivalencias",
-            element: <Equivalencias plan={plan} />,
+            element: <Equivalencias />,
         },
         {
             path: "/chatbot",
-            element: <ChatBot plan={plan} />
+            element: <ChatBot />
         }
     ])
     return componentesRutas

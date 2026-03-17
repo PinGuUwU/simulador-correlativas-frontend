@@ -1,0 +1,37 @@
+//Estilos de los estados
+const obtenerEstiloPorEstado = (estado) => {
+    switch (estado) {
+        case "Aprobado":
+            return { icon: "fa-circle-check", accent: "success", colorText: "text-success" }
+        case "Disponible":
+            return { icon: "fa-unlock", accent: "primary", colorText: "text-primary" }
+        case "Regular":
+            return { icon: "fa-clock", accent: "warning", colorText: "text-warning" }
+        case "Bloqueado":
+        default:
+            return { icon: "fa-lock", accent: "default", colorText: "text-default-400" }
+    }
+}
+
+//Obtener las materias Correlativas Disponibles
+const buscarMateriasCorrelativas = (codigosCorrelativas, materias, progreso) => {
+    let materiasEncontradas = []
+    materias.forEach((m) => {
+        if (codigosCorrelativas.includes(m.codigo)) {
+
+            materiasEncontradas.push(m)
+        }
+    })
+    return materiasEncontradas
+}
+
+const estadosPosibles = ['Disponible', 'Regular', 'Aprobado']
+const bloquear = 'Bloqueado'
+const numsRomanos = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"]
+
+export default {
+    estadosPosibles,
+    buscarMateriasCorrelativas,
+    obtenerEstiloPorEstado,
+    bloquear
+}

@@ -9,7 +9,7 @@ function Inicio() {
 
     const buttonItems = [
         { name: 'Ver mi progreso', icon: 'fa-graduation-cap', path: '/progreso', isDeactivated: false },
-        { name: 'Simulador de Avance', icon: 'fa-route', path: '/simulador', isDeactivated: false },
+        { name: 'Simulador de Avance', icon: 'fa-route', path: '/simulador', isDeactivated: true },
         { name: 'Consultar Equivalencias', icon: 'fa-right-left', path: '/equivalencias', isDeactivated: true },
     ]
 

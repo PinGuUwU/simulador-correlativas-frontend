@@ -28,3 +28,29 @@ pnpm-debug.log*
 logs
 *.log
 .pnpm-debug.log*
+
+# --- IDEs y Editores ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Sistema Operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Herramientas de Deployment (Netlify/Vercel) ---
+.netlify/
+.vercel/
+
+# --- Testing ---
+coverage/
+.nyc_output/
+
+# --- TypeScript ---
+*.tsbuildinfo

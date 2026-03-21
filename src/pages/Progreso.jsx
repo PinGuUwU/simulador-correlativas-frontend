@@ -3,11 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import MateriasList from '../components/Progreso/MateriasList';
 import MateriasProgreso from '../components/Progreso/MateriasProgreso';
 import ProgresoTotal from '../components/Progreso/ProgresoTotal';
-import { Spinner } from '@heroui/react';
+import { Spinner, Button } from '@heroui/react';
 import LeyendaEstados from '../components/Progreso/LeyendaEstados';
+import TutorialTour from '../components/Tutorial/TutorialTour';
 
 
-import { fetchWithFallback } from '../utils/fetchUtils';
+import { fetchWithFallback } from '../utils/fetchWithFallback';
+
 
 function Progreso({ plan }) {
     //Estados para guardar las materias y para mostrar una imagen de cargando, además para contabilizar el progreso
@@ -20,13 +22,23 @@ function Progreso({ plan }) {
     const headerRef = useRef(null)
     //El sticky del progreso total
     const [isSticky, setIsSticky] = useState(false)
+    
+    // Tutorial state
+    const [mostrarTutorial, setMostrarTutorial] = useState(false)
+    
+    // Forzar scroll arriba al montar la página
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' })
+    }, [])
+    
     //Busca las materias desde la base de datos, en base al plan seleccionado
     useEffect(() => {
         const fetchMaterias = async () => {
             try {
-                //Hago la petición al backend con el nuevo utility con fallback
-                const response = await fetchWithFallback(`${plan}`)
-                if (!response) {
+                // Hago la petición usando la utilidad con fallback
+                const response = await fetchWithFallback(`/${plan}`);
+                
+                if (!response.ok) {
                     throw new Error("Error en la respuesta del servidor")
                 }
 
@@ -52,6 +64,12 @@ function Progreso({ plan }) {
 
                 //Ya no está cargando porque ya tenemos la data
                 setCargando(false)
+                
+                // Mostrar tutorial solo en DESKTOP si nunca se mostró
+                if (window.innerWidth > 1024 && !localStorage.getItem(`tutorial_progreso`) && !mostrarTutorial) {
+                     setMostrarTutorial(true)
+                }
+
             } catch (error) {
                 console.error("Error al traer las materias:", error)
                 setCargando(false)
@@ -71,8 +89,25 @@ function Progreso({ plan }) {
         return total
     }
     const progress = Math.round((totalProgreso() * 100) / materias.length)
+    
+    const handleTutorialComplete = () => {
+         setMostrarTutorial(false)
+         localStorage.setItem(`tutorial_progreso`, 'true')
+    }
+
+    // Escuchar el evento 'start-tutorial' disparado desde el botón "Repetir Tutorial" del NavBar
+    useEffect(() => {
+        const handleStartTutorial = () => {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            setMostrarTutorial(true);
+        };
+        window.addEventListener('start-tutorial', handleStartTutorial);
+        return () => window.removeEventListener('start-tutorial', handleStartTutorial);
+    }, []);
+    
     return (
         <div className="overflow-hidden bg-default-100">
+             {mostrarTutorial && <TutorialTour onComplete={handleTutorialComplete} onCancel={handleTutorialComplete} />}
             {cargando && (
                 <div className='flex justify-center items-center h-screen'>
                     < Spinner />
@@ -104,7 +139,18 @@ function Progreso({ plan }) {
             )}
 
             {/* Breve descripción de lo que significa cada estado posible */}
-            <LeyendaEstados />
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between pb-6 mx-5 md:mx-10 lg:mx-15">
+                <LeyendaEstados />
+                <Button 
+                     color="primary" 
+                     variant="flat" 
+                     onPress={() => setMostrarTutorial(true)}
+                     startContent={<i className="fa-solid fa-circle-question" />}
+                     className="font-bold w-full md:w-auto"
+                >
+                     Ver Tutorial
+                </Button>
+            </div>
         </div>
     );
 }

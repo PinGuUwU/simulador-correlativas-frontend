@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { addToast } from '@heroui/react'
-import { fetchWithFallback } from '../../utils/fetchUtils'
+import { fetchWithFallback } from '../../utils/fetchWithFallback'
 
 const useSimuladorEstado = ({ plan, modo, anioInicio, cuatriInicio, materiasCursables }) => {
     const [materias, setMaterias] = useState([])
@@ -21,7 +21,9 @@ const useSimuladorEstado = ({ plan, modo, anioInicio, cuatriInicio, materiasCurs
         const fetchMaterias = async () => {
             setCargando(true)
             try {
-                const response = await fetchWithFallback(`${plan}`)
+                // Hago la petición usando la utilidad con fallback
+                const response = await fetchWithFallback(`/${plan}`);
+                
                 if (!response.ok) throw new Error('Error en la respuesta del servidor')
                 const data = await response.json()
                 setMaterias(data)

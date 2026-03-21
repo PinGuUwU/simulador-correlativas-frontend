@@ -4,6 +4,7 @@ import MateriasList from '../components/Correlativas/MateriasList.jsx';
 import MateriasProgreso from '../components/Correlativas/MateriasProgreso.jsx';
 import ProgresoTotal from '../components/Correlativas/ProgresoTotal.jsx';
 import { Spinner } from '@heroui/react';
+import { fetchWithFallback } from '../utils/fetchUtils';
 
 
 function Correlativas({ plan }) {
@@ -21,8 +22,8 @@ function Correlativas({ plan }) {
     useEffect(() => {
         const fetchMaterias = async () => {
             try {
-                //Hago la petición al backend
-                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/${plan}`)
+                //Hago la petición al backend con el nuevo utility con fallback
+                const response = await fetchWithFallback(`${plan}`)
                 if (!response) {
                     throw new Error("Error en la respuesta del servidor")
                 }

@@ -7,6 +7,8 @@ import { Spinner } from '@heroui/react';
 import LeyendaEstados from '../components/Progreso/LeyendaEstados';
 
 
+import { fetchWithFallback } from '../utils/fetchUtils';
+
 function Progreso({ plan }) {
     //Estados para guardar las materias y para mostrar una imagen de cargando, además para contabilizar el progreso
     const [materias, setMaterias] = useState([])
@@ -22,8 +24,8 @@ function Progreso({ plan }) {
     useEffect(() => {
         const fetchMaterias = async () => {
             try {
-                //Hago la petición al backend
-                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/${plan}`)
+                //Hago la petición al backend con el nuevo utility con fallback
+                const response = await fetchWithFallback(`${plan}`)
                 if (!response) {
                     throw new Error("Error en la respuesta del servidor")
                 }

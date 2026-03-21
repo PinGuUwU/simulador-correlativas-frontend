@@ -1,6 +1,6 @@
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Radio, RadioGroup, Select, SelectItem } from '@heroui/react'
 import selectUtils from '../../../utils/Simulador/selectUtils.js'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setModo, setCuatri, setPlan }) {
 
@@ -14,16 +14,41 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
         setPlan(confiPlan)
         setCuatri(confiCuatri)
         setModo(confiModo)
-        console.log(confiModo, confiAnio, confiCuatri, confiPlan);
-        // Cierro el modal al terminar de configurar
         onClose()
     }
+
+    // Elimina aria-hidden de los popovers de HeroUI mientras el modal está abierto,
+    // evitando el warning "Blocked aria-hidden on an element because its descendant retained focus".
+    // No se usa inert porque bloquearía los eventos del mouse en el dropdown.
+    useEffect(() => {
+        if (!isOpen) return
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(({ target, attributeName }) => {
+                if (
+                    attributeName === 'aria-hidden' &&
+                    target instanceof Element &&
+                    target.getAttribute('data-slot') === 'popover' &&
+                    target.getAttribute('aria-hidden') === 'true'
+                ) {
+                    target.removeAttribute('aria-hidden')
+                }
+            })
+        })
+
+        observer.observe(document.body, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['aria-hidden'],
+        })
+
+        return () => observer.disconnect()
+    }, [isOpen])
 
     return (
         <Modal
             isOpen={isOpen}
             onOpenChange={onOpenChange}
-            // En móvil se pega abajo como un "drawer", en desktop va al centro
             placement="bottom-center"
             size="md"
             disableAnimation
@@ -42,7 +67,6 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
                     <>
                         <ModalHeader className='flex flex-col gap-1'>
                             <div className='flex items-center gap-3'>
-                                {/* Icono con color primary consistente */}
                                 <div className='bg-primary text-white w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30'>
                                     <i className='fa-solid fa-sliders text-lg' />
                                 </div>
@@ -50,7 +74,7 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
                                     <h2 className='text-xl font-bold text-foreground'>
                                         Configurar Simulación
                                     </h2>
-                                    <p className='text-[12px] font-medium text-default-400 uppercase tracking-wider'>
+                                    <p className='text-[12px] font-medium text-foreground/60 uppercase tracking-wider'>
                                         Parámetros Iniciales
                                     </p>
                                 </div>
@@ -58,7 +82,7 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
                         </ModalHeader>
 
                         <ModalBody>
-                            {/* Sección: Fecha de Inicio y plan */}
+                            {/* Sección: Plan */}
                             <div className="flex flex-col gap-4">
                                 <div className="flex items-center gap-2 text-foreground">
                                     <div className="w-1 h-5 bg-primary rounded-full"></div>
@@ -67,36 +91,37 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
 
                                 <Select
                                     label="Plan de estudio"
+                                    aria-label="Seleccionar Plan de estudio"
                                     variant="flat"
                                     defaultSelectedKeys={["17.14"]}
                                     onSelectionChange={(keys) => setConfiPlan(Array.from(keys)[0])}
                                     classNames={{
                                         trigger: "bg-default-50 border border-default-100 rounded-2xl shadow-sm h-14",
-                                        label: "text-default-500 font-medium"
+                                        label: "text-foreground/80 font-medium"
                                     }}
                                 >
-                                    {selectUtils.plans.map((anio) => (
-                                        <SelectItem key={anio.key} textValue={anio.label}>
-                                            {anio.label}
+                                    {selectUtils.plans.map((plan) => (
+                                        <SelectItem key={plan.key} textValue={plan.label}>
+                                            {plan.label}
                                         </SelectItem>
                                     ))}
                                 </Select>
 
-
                                 <div className="flex items-center gap-2 text-foreground">
-                                    <div className="w-1 h-5 bg-primary rounded-full"></div> {/* Indicador lateral */}
+                                    <div className="w-1 h-5 bg-primary rounded-full"></div>
                                     <h3 className="font-bold text-md">Fecha de Inicio</h3>
                                 </div>
 
                                 <div className='flex flex-col sm:flex-row gap-3'>
                                     <Select
                                         label="Año de inicio"
+                                        aria-label="Año de inicio de la simulación"
                                         variant="flat"
                                         defaultSelectedKeys={["2026"]}
                                         onSelectionChange={(keys) => setConfiAnio(Array.from(keys)[0])}
                                         classNames={{
                                             trigger: "bg-default-50 border border-default-100 rounded-2xl shadow-sm h-14",
-                                            label: "text-default-500 font-medium"
+                                            label: "text-foreground/80 font-medium"
                                         }}
                                     >
                                         {selectUtils.anios.map((anio) => (
@@ -108,12 +133,13 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
 
                                     <Select
                                         label="Cuatrimestre"
+                                        aria-label="Cuatrimestre de inicio"
                                         variant="flat"
                                         defaultSelectedKeys={["1"]}
                                         onSelectionChange={(keys) => setConfiCuatri(Array.from(keys)[0])}
                                         classNames={{
                                             trigger: "bg-default-50 border border-default-100 rounded-2xl shadow-sm h-14",
-                                            label: "text-default-500 font-medium"
+                                            label: "text-foreground/80 font-medium"
                                         }}
                                     >
                                         {selectUtils.cuatris.map((cuatri) => (
@@ -134,6 +160,7 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
 
                                 <RadioGroup
                                     defaultValue={"viejo"}
+                                    aria-label="Modo de simulación"
                                     onValueChange={setConfiModo}
                                     classNames={{ wrapper: "gap-3" }}
                                 >
@@ -142,7 +169,7 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
                                         classNames={{
                                             base: "inline-flex m-0 bg-content1 hover:bg-primary/5 items-center justify-between flex-row-reverse max-w-full cursor-pointer rounded-2xl gap-4 p-4 border border-default-100 shadow-sm transition-all data-[selected=true]:border-primary data-[selected=true]:bg-primary/10",
                                             label: "text-foreground font-bold text-sm",
-                                            description: "text-default-500 text-[11px] leading-tight",
+                                            description: "text-foreground/80 text-[11px] leading-tight",
                                         }}
                                         description="Cargá tus materias aprobadas y regulares automáticamente."
                                     >
@@ -153,12 +180,25 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
                                         classNames={{
                                             base: "inline-flex m-0 bg-content1 hover:bg-primary/5 items-center justify-between flex-row-reverse max-w-full cursor-pointer rounded-2xl gap-4 p-4 border border-default-100 shadow-sm transition-all data-[selected=true]:border-primary data-[selected=true]:bg-primary/10",
                                             label: "text-foreground font-bold text-sm",
-                                            description: "text-default-500 text-[11px] leading-tight",
+                                            description: "text-foreground/80 text-[11px] leading-tight",
                                         }}
                                         description="Iniciá una planificación limpia desde el primer año."
                                     >
                                         Empezar desde cero
                                     </Radio>
+                                    {localStorage.getItem(`simulacion+${confiPlan}`) && (
+                                        <Radio
+                                            value="guardado"
+                                            classNames={{
+                                                base: "inline-flex m-0 bg-content1 hover:bg-primary/5 items-center justify-between flex-row-reverse max-w-full cursor-pointer rounded-2xl gap-4 p-4 border border-default-100 shadow-sm transition-all data-[selected=true]:border-primary data-[selected=true]:bg-primary/10",
+                                                label: "text-foreground font-bold text-sm",
+                                                description: "text-foreground/80 text-[11px] leading-tight",
+                                            }}
+                                            description="Continuá tu simulación exactamente donde la dejaste."
+                                        >
+                                            Cargar simulación guardada
+                                        </Radio>
+                                    )}
                                 </RadioGroup>
                             </div>
                         </ModalBody>
@@ -174,7 +214,7 @@ function ConfiguracionSimulador({ isOpen, onOpenChange, onClose, setAnio, setMod
                             <Button
                                 variant="light"
                                 onPress={onClose}
-                                className="w-full sm:w-auto rounded-2xl font-semibold h-12 text-default-400"
+                                className="w-full sm:w-auto rounded-2xl font-semibold h-12 text-foreground/60"
                             >
                                 Cancelar
                             </Button>

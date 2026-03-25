@@ -3,7 +3,7 @@ import { useRoutes } from 'react-router-dom'
 import Progreso from '../pages/Progreso'
 import Equivalencias from '../pages/Equivalencias'
 import Inicio from '../pages/Inicio'
-import ChatBot from '../pages/Chatbot'
+import ChatBot from '../pages/ChatBot'
 import Simulador from '../pages/Simulador'
 import ComoUsar from '../pages/ComoUsar'
 

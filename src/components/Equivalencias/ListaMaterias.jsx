@@ -90,9 +90,9 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                           {cuatri}° Cuatrimestre
                         </h3>
                       </div>
-                      <Chip 
-                        size="sm" 
-                        variant="flat" 
+                      <Chip
+                        size="sm"
+                        variant="flat"
                         className="bg-background/50 border border-default-200 text-default-500 font-bold text-[10px] uppercase px-3"
                       >
                         {gruposCuatri.length} {gruposCuatri.length === 1 ? 'grupo' : 'grupos'}
@@ -102,17 +102,17 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                     <div className="grid grid-cols-1 gap-12 sm:gap-16">
                       {gruposCuatri.map((grupo, index) => {
                         // Un grupo está aprobado si TODAS sus materias viejas lo están
-                        const todasAprobadas = grupo.materiasViejas.length > 0 && 
+                        const todasAprobadas = grupo.materiasViejas.length > 0 &&
                           grupo.materiasViejas.every(m => progresoSimulado[m.codigo] === "Aprobado");
-                        
-                        const estadoNuevo = grupo.esEquivalente 
+
+                        const estadoNuevo = grupo.esEquivalente
                           ? (todasAprobadas ? "Aprobado" : "Disponible")
                           : "Sin equivalencia";
 
                         return (
                           <React.Fragment key={grupo.id}>
                             <div className="flex flex-col sm:grid sm:grid-cols-11 gap-4 sm:gap-6 items-center">
-                              
+
                               {/* Lado Izquierdo: Materias Viejas (Origen) */}
                               <div className="w-full sm:col-span-5 flex flex-col gap-3">
                                 {grupo.materiasViejas.map((mVieja) => (
@@ -133,7 +133,7 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                               {/* Centro: Flecha / Conector */}
                               <div className="flex sm:col-span-1 justify-center items-center py-2 sm:py-0">
                                 <ArrowRight className="hidden sm:block text-primary/20" size={32} strokeWidth={2.5} />
-                                <ChevronDown className="sm:hidden text-default-400" size={20} />
+                                <ChevronDown className="sm:hidden text-default-600" size={20} />
                               </div>
 
                               {/* Lado Derecho: Materia Nueva (Destino) */}
@@ -149,7 +149,7 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                             {/* Separador entre grupos - Solo visible en mobile */}
                             {index < gruposCuatri.length - 1 && (
                               <div className="sm:hidden flex items-center justify-center py-2">
-                                <div className="w-full h-px bg-gradient-to-r from-transparent via-default-300/40 to-transparent" />
+                                <div className="w-full bg-default-400" />
                               </div>
                             )}
                           </React.Fragment>

@@ -3,14 +3,15 @@ import { useEffect, useRef, useState } from 'react';
 import MateriasList from '../components/Progreso/MateriasList';
 import MateriasProgreso from '../components/Progreso/MateriasProgreso';
 import ProgresoTotal from '../components/Progreso/ProgresoTotal';
-import { Spinner, Button } from '@heroui/react';
+import { Spinner, Button, addToast } from '@heroui/react';
 import LeyendaEstados from '../components/Progreso/LeyendaEstados';
 import TutorialTour from '../components/Tutorial/TutorialTour';
 import planService from '../services/planService';
 import materiasUtils from '../utils/Progreso/materiasUtils';
-
+import { useAuth } from '../context/AuthContext';
 
 function Progreso({ plan }) {
+    const { getProgresoLocal, updateAuthProgreso } = useAuth();
     //Estados para guardar las materias y para mostrar una imagen de cargando, además para contabilizar el progreso
     const [materias, setMaterias] = useState([])
     const [progreso, setProgreso] = useState([])
@@ -34,15 +35,14 @@ function Progreso({ plan }) {
         try {
             const planData = planService.getPlanByNumber(plan)
             if (!planData) {
-                console.error(`Plan ${plan} not found`);
+                addToast({ title: 'Plan no encontrado', description: `No existe el plan "${plan}". Intentá recargar la página.`, color: 'danger' });
                 setCargando(false);
                 return;
             }
             setMaterias(planData.materias)
             //Inicializo acá mismo el progreso dependiendo si había progreso previo o no
             let progresoInicial = {}
-            const storageKey = `progreso+${plan}`;
-            const storageData = localStorage.getItem(storageKey);
+            const storageData = getProgresoLocal(plan);
 
             if (!storageData) {
                 //Si no hay progreso previo, se inicializa
@@ -53,14 +53,14 @@ function Progreso({ plan }) {
                         progresoInicial[m.codigo] = (m.correlativas.length > 0 ? materiasUtils.bloquear : materiasUtils.estadosPosibles[0])
                     }
                 })
-                localStorage.setItem(storageKey, JSON.stringify(progresoInicial))
+                updateAuthProgreso(plan, progresoInicial);
             } else {
-                progresoInicial = JSON.parse(storageData)
+                progresoInicial = storageData;
             }
 
             setProgreso(progresoInicial)
-        } catch (error) {
-            console.error("Error loading plan data:", error)
+        } catch {
+            addToast({ title: 'Error al cargar el plan', description: 'No se pudo inicializar el progreso. Intentá recargar la página.', color: 'danger' })
         } finally {
             setCargando(false)
         }

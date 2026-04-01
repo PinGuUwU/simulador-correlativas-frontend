@@ -30,7 +30,7 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
     <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Encabezados Desktop */}
       <div className="hidden sm:grid sm:grid-cols-11 gap-4 px-6 py-2 items-center">
-        <div className="col-span-5 text-[10px] font-black uppercase text-default-400 text-center tracking-[0.2em] flex items-center justify-center gap-2">
+        <div className="col-span-5 text-[10px] font-black uppercase text-default-600 dark:text-default-400 text-center tracking-[0.2em] flex items-center justify-center gap-2">
           <Repeat size={12} /> Plan 17.13 (Origen)
         </div>
         <div className="col-span-1"></div>
@@ -65,7 +65,7 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
             title={`${anio}º Año`}
             subtitle={
               <div className="flex gap-2 mt-0.5">
-                <span className="text-[10px] text-default-400 font-bold uppercase">
+                <span className="text-[10px] text-default-600 dark:text-default-400 font-black uppercase">
                   {materias.length} equivalencias
                 </span>
               </div>
@@ -86,14 +86,14 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                     <div className="flex items-center justify-between bg-default-100/30 border border-default-200/50 rounded-2xl px-5 py-3 shadow-sm">
                       <div className="flex items-center gap-3">
                         <div className="w-1.5 h-6 bg-primary/40 rounded-full"></div>
-                        <h3 className="text-[13px] font-black text-default-600 uppercase tracking-widest">
+                        <h3 className="text-[13px] font-black text-default-800 dark:text-default-400 uppercase tracking-widest">
                           {cuatri}° Cuatrimestre
                         </h3>
                       </div>
-                      <Chip
-                        size="sm"
-                        variant="flat"
-                        className="bg-background/50 border border-default-200 text-default-500 font-bold text-[10px] uppercase px-3"
+                      <Chip 
+                        size="sm" 
+                        variant="flat" 
+                        className="bg-background/80 border border-default-300 text-default-700 dark:text-foreground font-black text-[10px] uppercase px-3"
                       >
                         {gruposCuatri.length} {gruposCuatri.length === 1 ? 'grupo' : 'grupos'}
                       </Chip>
@@ -102,17 +102,17 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                     <div className="grid grid-cols-1 gap-12 sm:gap-16">
                       {gruposCuatri.map((grupo, index) => {
                         // Un grupo está aprobado si TODAS sus materias viejas lo están
-                        const todasAprobadas = grupo.materiasViejas.length > 0 &&
+                        const todasAprobadas = grupo.materiasViejas.length > 0 && 
                           grupo.materiasViejas.every(m => progresoSimulado[m.codigo] === "Aprobado");
-
-                        const estadoNuevo = grupo.esEquivalente
+                        
+                        const estadoNuevo = grupo.esEquivalente 
                           ? (todasAprobadas ? "Aprobado" : "Disponible")
                           : "Sin equivalencia";
 
                         return (
                           <React.Fragment key={grupo.id}>
                             <div className="flex flex-col sm:grid sm:grid-cols-11 gap-4 sm:gap-6 items-center">
-
+                              
                               {/* Lado Izquierdo: Materias Viejas (Origen) */}
                               <div className="w-full sm:col-span-5 flex flex-col gap-3">
                                 {grupo.materiasViejas.map((mVieja) => (
@@ -133,7 +133,7 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                               {/* Centro: Flecha / Conector */}
                               <div className="flex sm:col-span-1 justify-center items-center py-2 sm:py-0">
                                 <ArrowRight className="hidden sm:block text-primary/20" size={32} strokeWidth={2.5} />
-                                <ChevronDown className="sm:hidden text-default-600" size={20} />
+                                <ChevronDown className="sm:hidden text-default-400" size={20} />
                               </div>
 
                               {/* Lado Derecho: Materia Nueva (Destino) */}
@@ -149,7 +149,7 @@ function ListaMaterias({ materiasFiltradas, progresoSimulado, onToggleEstado }) 
                             {/* Separador entre grupos - Solo visible en mobile */}
                             {index < gruposCuatri.length - 1 && (
                               <div className="sm:hidden flex items-center justify-center py-2">
-                                <div className="w-full bg-default-400" />
+                                <div className="w-full h-px bg-gradient-to-r from-transparent via-default-300/40 to-transparent" />
                               </div>
                             )}
                           </React.Fragment>

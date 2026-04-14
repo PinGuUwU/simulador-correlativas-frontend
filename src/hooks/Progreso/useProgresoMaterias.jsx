@@ -71,9 +71,10 @@ const useProgresoMaterias = (progreso, setProgreso, materias, plan, updateAuthPr
     }
 
     const desbloquearDependencias = (codigoMateria, nuevoProgreso) => {
+        const ESTADOS_VALIDOS_DESBLOQUEO = [materiasUtils.estadosPosibles[1], materiasUtils.estadosPosibles[2], 'Cursando'];
         materias.forEach((m) => {
-            const todasBien = m.correlativas.every(c => ([materiasUtils.estadosPosibles[1], materiasUtils.estadosPosibles[2]].includes(nuevoProgreso[c])));
-            const buenEstado = [materiasUtils.estadosPosibles[1], materiasUtils.estadosPosibles[2]].includes(nuevoProgreso[m.codigo]);
+            const todasBien = m.correlativas.every(c => ESTADOS_VALIDOS_DESBLOQUEO.includes(nuevoProgreso[c]));
+            const buenEstado = ESTADOS_VALIDOS_DESBLOQUEO.includes(nuevoProgreso[m.codigo]);
             if (m.correlativas.includes(codigoMateria) && todasBien && !buenEstado) {
                 nuevoProgreso[m.codigo] = materiasUtils.estadosPosibles[0];
             }
@@ -108,31 +109,33 @@ const useProgresoMaterias = (progreso, setProgreso, materias, plan, updateAuthPr
     }
 
     // 5. El motor principal de cambios
-    const cambioDeEstado = (codigoMateria) => {
+    const cambioDeEstado = (codigoMateria, targetState = null) => {
         const materiaActual = materias.find((materia) => materia.codigo === codigoMateria);
         if (!materiaActual) return; // Chequeo de seguridad
 
         const estadoInicial = progreso[codigoMateria];
-        const estadoNuevo = actualizarEstado(estadoInicial);
+        const estadoNuevo = targetState ? targetState : actualizarEstado(estadoInicial);
 
         let nuevoProgreso = { ...progreso, [codigoMateria]: estadoNuevo };
         let materiasModificadas = [materiaActual.codigo];
 
         // LOGICA DE LA TESINA (Aprobado Forzoso)
-        // Si el usuario toca la tesina y su nuevo estado es Regular (1) o Aprobado (2)
         if (materiaActual.tesis && (estadoNuevo === materiasUtils.estadosPosibles[1] || estadoNuevo === materiasUtils.estadosPosibles[2])) {
             aprobarTodas(nuevoProgreso, materiasModificadas);
         } else {
-            // Lógica normal para el resto de materias
-            if ((estadoInicial === materiasUtils.bloquear || estadoInicial === materiasUtils.estadosPosibles[0]) && estadoNuevo === materiasUtils.estadosPosibles[1]) {
+            // Cursando: estado neutro, no dispara cascada de correlativas
+            if (estadoNuevo === 'Cursando') {
+                // Solo actualizar el estado, sin tocar dependencias
+            } else if (estadoNuevo === materiasUtils.estadosPosibles[1]) { // Regular
                 if (materiaActual.correlativas.length > 0) {
                     regularizarCorrelativas(materiaActual.correlativas, nuevoProgreso, materiasModificadas);
                 }
-            } else if (estadoInicial === materiasUtils.estadosPosibles[1] && estadoNuevo === materiasUtils.estadosPosibles[2]) {
+            } else if (estadoNuevo === materiasUtils.estadosPosibles[2]) { // Aprobado
                 if (materiaActual.correlativas.length > 0) {
                     aprobarCorrelativas(materiaActual.correlativas, nuevoProgreso, materiasModificadas);
                 }
-            } else if (estadoInicial === materiasUtils.estadosPosibles[2] && estadoNuevo === materiasUtils.estadosPosibles[0]) {
+            } else if (estadoNuevo === materiasUtils.estadosPosibles[0] || estadoNuevo === materiasUtils.bloquear) {
+                // Disponible o Bloqueado (Ej: Reiniciar)
                 bloquearDependencias(codigoMateria, nuevoProgreso);
             }
         }

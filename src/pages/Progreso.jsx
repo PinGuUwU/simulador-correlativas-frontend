@@ -1,142 +1,90 @@
-
 import { useEffect, useRef, useState } from 'react';
 import MateriasList from '../components/Progreso/MateriasList';
-import MateriasProgreso from '../components/Progreso/MateriasProgreso';
 import ProgresoTotal from '../components/Progreso/ProgresoTotal';
-import { Spinner, Button, addToast } from '@heroui/react';
+import { Spinner } from '@heroui/react';
 import LeyendaEstados from '../components/Progreso/LeyendaEstados';
-import TutorialTour from '../components/Tutorial/TutorialTour';
-import planService from '../services/planService';
+import PlanSelectionModal from '../components/Progreso/modals/PlanSelectionModal';
+import usePlanData from '../hooks/usePlanData';
 import materiasUtils from '../utils/Progreso/materiasUtils';
-import { useAuth } from '../context/AuthContext';
 
-function Progreso({ plan }) {
-    const { getProgresoLocal, updateAuthProgreso } = useAuth();
-    
-    // Inicialización síncrona para anular el bloqueo de renderizado (Mejora radical de LCP y FCP)
-    const [materias, setMaterias] = useState(() => {
-        const planData = planService.getPlanByNumber(plan);
-        return planData ? planData.materias : [];
-    });
+function Progreso({ plan, setPlan }) {
+    // Usamos el hook centralizado para la carga de datos y progreso
+    const { 
+        materias, 
+        progreso, 
+        setProgreso, 
+        progresoDetalles, 
+        setProgresoDetalles, 
+        cargandoPlan: cargando 
+    } = usePlanData(plan);
 
-    const [progreso, setProgreso] = useState(() => {
-        const planData = planService.getPlanByNumber(plan);
-        if (!planData) return {};
-        const storageData = getProgresoLocal(plan);
-        if (storageData) return storageData;
-
-        let progresoInicial = {};
-        planData.materias.forEach(m => {
-            if (m.tesis) progresoInicial[m.codigo] = materiasUtils.bloquear;
-            else progresoInicial[m.codigo] = (m.correlativas.length > 0 ? materiasUtils.bloquear : materiasUtils.estadosPosibles[0]);
-        });
-        return progresoInicial;
-    });
-
-    const [cargando, setCargando] = useState(false);
     const carrera = "Licenciatura en Sistemas de Información";
     const headerRef = useRef(null);
     const [isSticky, setIsSticky] = useState(false);
-    const [mostrarTutorial, setMostrarTutorial] = useState(false);
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'instant' });
     }, []);
 
-    // Actualizar si el plan cambia dinámicamente
-    useEffect(() => {
-        const planData = planService.getPlanByNumber(plan);
-        if (!planData) {
-            addToast({ title: 'Plan no encontrado', description: `No existe el plan "${plan}".`, color: 'danger' });
-            return;
-        }
-        setMaterias(planData.materias);
-        
-        let localProgreso = getProgresoLocal(plan);
-        if (!localProgreso) {
-            localProgreso = {};
-            planData.materias.forEach(m => {
-                if (m.tesis) localProgreso[m.codigo] = materiasUtils.bloquear;
-                else localProgreso[m.codigo] = (m.correlativas.length > 0 ? materiasUtils.bloquear : materiasUtils.estadosPosibles[0]);
-            });
-            updateAuthProgreso(plan, localProgreso);
-        }
-        setProgreso(localProgreso);
-    }, [plan, getProgresoLocal, updateAuthProgreso]);
-
-    //Calcular el progreso total para pasarselo al componente
+    // Calcular el progreso total (materias aprobadas)
     const totalProgreso = () => {
-        let total = 0
+        if (!materias.length) return 0;
+        let total = 0;
         materias.forEach((m) => {
             if (progreso[m.codigo] === materiasUtils.estadosPosibles[2]) {
-                total += 1
+                total += 1;
             }
-        })
-        return total
-    }
-    const progress = Math.round((totalProgreso() * 100) / materias.length)
-
-    const handleTutorialComplete = () => {
-        setMostrarTutorial(false)
-        localStorage.setItem(`tutorial_progreso`, 'true')
-    }
-
-    // Escuchar el evento 'start-tutorial' disparado desde el botón "Repetir Tutorial" del NavBar
-    useEffect(() => {
-        const handleStartTutorial = () => {
-            window.scrollTo({ top: 0, behavior: 'instant' });
-            setMostrarTutorial(true);
-        };
-        window.addEventListener('start-tutorial', handleStartTutorial);
-        return () => window.removeEventListener('start-tutorial', handleStartTutorial);
-    }, []);
+        });
+        return total;
+    };
+    
+    const progress = materias.length > 0 
+        ? Math.round((totalProgreso() * 100) / materias.length) 
+        : 0;
 
     return (
-        <div className="overflow-hidden bg-default-100">
-            {mostrarTutorial && <TutorialTour onComplete={handleTutorialComplete} onCancel={handleTutorialComplete} />}
+        <div className="overflow-visible bg-default-100 min-h-screen">
+            <PlanSelectionModal 
+                isOpen={!plan} 
+                onSelect={(selectedPlan) => setPlan(selectedPlan)} 
+            />
+
             {cargando && (
                 <div className='flex justify-center items-center h-screen'>
-                    < Spinner />
+                    <Spinner size="lg" label="Cargando materias..." />
                 </div>
             )}
-            {!cargando && (
+
+            {!cargando && plan && (
                 <div>
                     <ProgresoTotal
                         carrera={carrera}
                         progress={progress}
                         progreso={progreso}
+                        progresoDetalles={progresoDetalles}
                         materias={materias}
                         isSticky={isSticky}
                         headerRef={headerRef}
                         setIsSticky={setIsSticky}
                     />
-                    <div className='mx-5 md:mx-10 lg:mx-15'>
-                        <MateriasProgreso progreso={progreso} materias={materias} />
+                    <div className='mx-5 md:mx-10 lg:mx-15 mt-6'>
                         <MateriasList
                             plan={plan}
                             progreso={progreso}
                             setProgreso={setProgreso}
+                            progresoDetalles={progresoDetalles}
+                            setProgresoDetalles={setProgresoDetalles}
                             materias={materias}
                             cargando={cargando}
                             isProgressSticky={isSticky}
                         />
                     </div>
+
+                    <div className="flex flex-col md:flex-row gap-4 items-center justify-between pb-6 mx-5 md:mx-10 lg:mx-15">
+                        <LeyendaEstados materias={materias} />
+                    </div>
                 </div>
             )}
-
-            {/* Breve descripción de lo que significa cada estado posible */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between pb-6 mx-5 md:mx-10 lg:mx-15">
-                <LeyendaEstados materias={materias} />
-                <Button
-                    color="primary"
-                    variant="flat"
-                    onPress={() => setMostrarTutorial(true)}
-                    startContent={<i className="fa-solid fa-circle-question" />}
-                    className="font-bold w-full md:w-auto"
-                >
-                    Ver Tutorial
-                </Button>
-            </div>
         </div>
     );
 }

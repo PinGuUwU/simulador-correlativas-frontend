@@ -21,9 +21,9 @@ function AppContent({ plan, setPlan }) {
         initOfflineListener();
     }, []);
     return (
-        <div className='flex'>
+        <div className='flex min-h-screen'>
             <NavBar setPlan={setPlan} plan={plan} />
-            <main className='w-full'>
+            <main className='flex-1 min-w-0 relative'>
                 <Rutas plan={plan} setPlan={setPlan} />
                 <Suspense fallback={null}>
                     <Footer />
@@ -35,7 +35,17 @@ function AppContent({ plan, setPlan }) {
 }
 
 function App() {
-    const [plan, setPlan] = useState("17.14")
+    // Inicializar el plan desde localStorage si existe
+    const [plan, setPlan] = useState(() => {
+        return localStorage.getItem('plan_activo');
+    })
+
+    // Persistir el plan cada vez que cambie
+    useEffect(() => {
+        if (plan) {
+            localStorage.setItem('plan_activo', plan);
+        }
+    }, [plan]);
 
     return (
         <AuthProvider>

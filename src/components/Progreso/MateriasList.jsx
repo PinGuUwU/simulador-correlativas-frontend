@@ -3,18 +3,47 @@ import MateriaCard from './MateriaCard.jsx'
 import { Button, Chip, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Switch, Tab, Tabs, useDisclosure } from '@heroui/react'
 import DetalleMateriaModal from './modals/DetalleMateriaModal.jsx'
 import ConfirmarCambioModal from './modals/ConfirmarCambioModal.jsx'
+import CapturaTransicionModal from './modals/CapturaTransicionModal.jsx'
 import { useNavigate } from 'react-router-dom'
 import materiasUtils from '../../utils/Progreso/materiasUtils.js'
 import useProgresoMaterias from '../../hooks/Progreso/useProgresoMaterias.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
+import regularidadUtils from '../../utils/Progreso/regularidadUtils.js'
 
-function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan }) {
+function MateriasList({ progreso, setProgreso, progresoDetalles, setProgresoDetalles, materias, isProgressSticky, plan }) {
     const { updateAuthProgreso } = useAuth();
-    const [modo, setModo] = useState(false) //Para saber si se está editando el estado o no
     const [infoMateria, setInfoMateria] = useState()
-    const topSwitchRef = useRef(null)
-    const [mostrarSwitchFlotante, setMostrarSwitchFlotante] = useState(false)
     const { cambioDeEstado } = useProgresoMaterias(progreso, setProgreso, materias, plan, updateAuthProgreso)
+    
+    // Efecto para verificar vencimientos pasivos al cargar
+    useEffect(() => {
+        if (!progreso || !progresoDetalles) return;
+        
+        let huboCambios = false;
+        const nuevoProgreso = { ...progreso };
+        
+        Object.entries(progreso).forEach(([codigo, estado]) => {
+            if (estado === 'Regular') {
+                const detalles = progresoDetalles[codigo];
+                if (detalles?.fechaRegularidad) {
+                    const estadoActualizado = regularidadUtils.calcularEstadoConsolidado(
+                        "Regular",
+                        detalles.fechaRegularidad,
+                        detalles.intentosFinal
+                    );
+                    if (estadoActualizado === 'Libre') {
+                        nuevoProgreso[codigo] = 'Libre';
+                        huboCambios = true;
+                    }
+                }
+            }
+        });
+        
+        if (huboCambios) {
+            setProgreso(nuevoProgreso);
+            updateAuthProgreso(plan, nuevoProgreso, progresoDetalles);
+        }
+    }, []);
     const [confirmacion, setConfirmacion] = useState(false)
     const [mostrar, setMostrar] = useState(true)
     //Logica para mostrar u ocultar las materias de un año
@@ -36,24 +65,6 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
         localStorage.setItem('materias_isAnioOpen', JSON.stringify(isAnioOpen));
     }, [isAnioOpen]);
     const navigate = useNavigate()
-    // Observador para saber si el switch principal se ve
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                // Si el elemento ya no está en pantalla, isIntersecting es false
-                setMostrarSwitchFlotante(!entry.isIntersecting)
-            },
-            { threshold: 0 } // Se dispara apenas el elemento sale completamente de la vista
-        )
-
-        if (topSwitchRef.current) {
-            observer.observe(topSwitchRef.current)
-        }
-
-        return () => {
-            if (topSwitchRef.current) observer.unobserve(topSwitchRef.current)
-        }
-    }, [])
 
     // Para el Drawer/Info de la materia
     const {
@@ -78,6 +89,15 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
         onOpenChange: onConfirmationOpenChange,
         onClose: onConfirmationClose
     } = useDisclosure()
+
+    // Para el modal de captura de datos por transición de estado
+    const {
+        isOpen: isCapturaOpen,
+        onOpen: onCapturaOpen,
+        onOpenChange: onCapturaOpenChange,
+        onClose: onCapturaClose
+    } = useDisclosure()
+    const [capturaConfig, setCapturaConfig] = useState({ tipo: null, materia: null, pendingState: null })
 
     //Abrir la info de una materia con Drawer de HeroUI
     const abrirInfo = (materia) => {
@@ -151,9 +171,10 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
             }
         })
 
-        updateAuthProgreso(plan, progresoInicial);
+        updateAuthProgreso(plan, progresoInicial, {});
         // Actualizo el progreso
         setProgreso(progresoInicial)
+        if (setProgresoDetalles) setProgresoDetalles({})
         onResetClose()
     }
     //Abrir el modal de confirmar el reestablecer progreso
@@ -162,25 +183,143 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
         window.history.pushState({ modalOpen: true }, "")
     }
 
-    //Manejar el cambio de estado
-    const handleCambioDeEstado = (codigo) => {
-        if (progreso[codigo] === materiasUtils.bloquear && mostrar) {
-            onConfirmationOpen()
-            setCodigoMateria(codigo)
-            window.history.pushState({ modalOpen: true }, "")
-        } else {
-            cambioDeEstado(codigo)
+    //Manejar el cambio de estado con Popover Menu
+    const [codigoMateria, setCodigoMateria] = useState()
+    const [targetStateModal, setTargetStateModal] = useState(null)
+
+    const handleCambioDeEstado = (codigo, targetState) => {
+        const mappedState = targetState === "Promocionado" ? "Aprobado" : targetState;
+        const materia = materias.find(m => m.codigo === codigo);
+        const estadoActual = progreso[codigo];
+
+        if (mappedState === "Reiniciar") {
+            const baseState = materia?.correlativas?.length > 0 ? materiasUtils.bloquear : materiasUtils.estadosPosibles[0];
+            cambioDeEstado(codigo, baseState);
+            return;
+        }
+
+        // Determinar tipo de captura según la transición
+        let tipoCaptura = null;
+
+        if (mappedState === "Cursando") {
+            tipoCaptura = 'hacia_cursando';
+        } else if (mappedState === "Regular") {
+            tipoCaptura = estadoActual === 'Cursando' ? 'desde_cursando_hacia_reg' : 'hacia_regular';
+        } else if (mappedState === "Aprobado") {
+            if (estadoActual === 'Regular' || estadoActual === 'Cursando') {
+                tipoCaptura = 'hacia_aprobado_desde_reg';
+            } else {
+                tipoCaptura = 'hacia_aprobado_directo';
+            }
+        }
+
+        if (tipoCaptura) {
+            setCapturaConfig({ tipo: tipoCaptura, materia, pendingState: mappedState });
+            setCodigoMateria(codigo);
+            onCapturaOpen();
+            return;
+        }
+
+        // Estados sin formulario (Libre directo, etc.)
+        cambioDeEstado(codigo, mappedState);
+    }
+
+    const handleCapturaConfirm = (payload) => {
+        // _sugerirLibre: el usuario eligio "Marcar como Libre" desde la alerta de nota reprobatoria
+        if (payload?._sugerirLibre) {
+            if (codigoMateria) {
+                const detallesActuales = progresoDetalles?.[codigoMateria] || {};
+                const updatedDetalles = {
+                    ...progresoDetalles,
+                    [codigoMateria]: { ...detallesActuales, notaRegularizacion: payload.notaRegularizacion }
+                };
+                if (setProgresoDetalles) setProgresoDetalles(updatedDetalles);
+                updateAuthProgreso(plan, progreso, updatedDetalles);
+            }
+            onCapturaClose();
+            cambioDeEstado(codigoMateria, 'Libre');
+            return;
+        }
+
+        if (payload && codigoMateria) {
+            const detallesActuales = progresoDetalles?.[codigoMateria] || {};
+            const estadoActual = progreso[codigoMateria];
+            
+            // ¿Es una recursada? (viniendo de Libre o Aprobado y queriendo regularizar/cursar de nuevo)
+            const viniendoDeEstadoFinal = ['Libre', 'Aprobado'].includes(estadoActual);
+            const yendoAEstadoActivo = ['Cursando', 'Regular', 'Aprobado'].includes(capturaConfig.pendingState);
+            const esRecursada = viniendoDeEstadoFinal && yendoAEstadoActivo;
+
+            let nuevosDetallesBase = { ...detallesActuales };
+
+            if (esRecursada) {
+                // Archivar la cursada actual en el historial
+                const { historial, ...datosAArchivar } = detallesActuales;
+                
+                // Solo archivar si realmente hay algo significativo (intentos o fecha de regularidad)
+                if ((datosAArchivar.intentosFinal && datosAArchivar.intentosFinal.length > 0) || datosAArchivar.fechaRegularidad) {
+                    nuevosDetallesBase = {
+                        historial: [
+                            ...(historial || []),
+                            { 
+                                ...datosAArchivar, 
+                                estadoFinal: estadoActual, // Guardamos que terminó como Libre o Aprobado
+                                fechaFin: new Date().toISOString()
+                            }
+                        ],
+                        // Limpiamos los datos actuales para la nueva cursada
+                        intentosFinal: [],
+                        fechaRegularidad: null,
+                        notaRegularizacion: null,
+                        fechaInicioCursada: null,
+                        notaFinal: null
+                    };
+                }
+            }
+
+            const nuevosDetalles = {
+                ...nuevosDetallesBase,
+                ...(payload.fechaRegularidad !== undefined && { fechaRegularidad: payload.fechaRegularidad }),
+                ...(payload.fechaInicioCursada !== undefined && { fechaInicioCursada: payload.fechaInicioCursada }),
+                ...(payload.notaFinal !== undefined && { notaFinal: payload.notaFinal }),
+                ...(payload.notaRegularizacion !== undefined && { notaRegularizacion: payload.notaRegularizacion }),
+            };
+
+            // Si transición 'desde_cursando_hacia_reg', copiar fechaInicioCursada como fechaRegularidad si no la tiene
+            if (capturaConfig.tipo === 'desde_cursando_hacia_reg' && !nuevosDetalles.fechaRegularidad && nuevosDetallesBase.fechaInicioCursada) {
+                nuevosDetalles.fechaRegularidad = nuevosDetallesBase.fechaInicioCursada;
+            }
+
+            if (payload.notaFinal != null && capturaConfig.pendingState === 'Aprobado') {
+                const nuevoIntento = {
+                    nota: payload.notaFinal,
+                    estado: payload.notaFinal >= 4 ? 'aprobado' : 'reprobado',
+                    fecha: new Date().toISOString()
+                };
+                nuevosDetalles.intentosFinal = [
+                    ...(nuevosDetallesBase.intentosFinal || []),
+                    nuevoIntento
+                ];
+            }
+
+            const updatedDetalles = { ...progresoDetalles, [codigoMateria]: nuevosDetalles };
+            if (setProgresoDetalles) setProgresoDetalles(updatedDetalles);
+            updateAuthProgreso(plan, progreso, updatedDetalles);
+        }
+
+        onCapturaClose();
+        // Aplicar el cambio de estado siempre
+        if (capturaConfig.pendingState) {
+            cambioDeEstado(codigoMateria, capturaConfig.pendingState);
         }
     }
-    const [codigoMateria, setCodigoMateria] = useState()
 
     useEffect(() => {
         if (confirmacion === true) {
-            cambioDeEstado(codigoMateria)
+            cambioDeEstado(codigoMateria, targetStateModal)
             setConfirmacion(false)
         }
-
-    }, [onConfirmationClose, isConfirmationOpen])
+    }, [onConfirmationClose, confirmacion])
 
     //Manejo los años para saber si están o no mostrandose
     const handleMostrar = (id) => {
@@ -249,8 +388,8 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
             </Modal>
 
             {/* Sección de botones */}
-            <div ref={topSwitchRef} className="grid grid-cols-2 sm:flex sm:justify-between mb-8 gap-2">
-                {/* Botón de Reestablecer - Solo visible en modo edición */}
+            <div className="grid grid-cols-2 sm:flex sm:justify-between mb-8 gap-2">
+                {/* Botón de Reestablecer */}
                 <div id="wrapper-btn-reset-progreso" className="flex flex-col">
                     <Button
                         size="sm"
@@ -272,7 +411,6 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
                     onPress={() => navigate("/simulador")}
                 >Simular Avance</Button>
 
-                {/* Ocular o mostrar todos los años */}
                 <div id="wrapper-btn-mostrar-todos" className="flex flex-col">
                     <Button
                         size='sm'
@@ -283,23 +421,6 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
                     >
                         {isAnioOpen.length > 0 ? "Mostrar todos" : "Ocultar todos"}
                     </Button>
-                </div>
-
-                {/* Switch para intercambiar el modo edición */}
-                <div id="wrapper-switch-modo-edicion" className="flex items-center justify-center relative">
-                    <Switch
-                        isSelected={modo}
-                        color="success"
-                        onChange={() => setModo(!modo)}
-                        endContent={<span className="text-xs">off</span>}
-                        startContent={<span className="text-xs">on</span>}
-                        size={currentSize}
-                        classNames={{
-                            label: "text-default-600 font-medium"
-                        }}
-                    >
-                        Modo Edición
-                    </Switch>
                 </div>
 
                 {/* Selector de Vista (Lista vs Cuadrícula) */}
@@ -319,26 +440,6 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
                     </Tabs>
                 </div>
             </div>
-            {/* Switch Flotante en la parte inferior derecha */}
-            {mostrarSwitchFlotante && isProgressSticky && (
-                <div className="fixed top-30 right-4 z-50 bg-background/90 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-default-200">
-                    <Switch
-                        color="success"
-                        isSelected={modo}
-                        onChange={() => setModo(!modo)}
-                        endContent={<span className="text-xs">OFF</span>}
-                        startContent={<span className="text-xs">ON</span>}
-                        size={currentSize}
-                        classNames={{
-                            label: "text-foreground font-bold"
-                        }}
-                    >
-                        Modo Edición
-                    </Switch>
-                </div>
-            )}
-
-
             {/* Sección materias */}
             <div id="tabs-filtro-anio" className="relative">
                 <Tabs aria-label="Filtos por año" items={tabs} className=' w-full mask-[linear-gradient(to_right,black_85%,transparent_100%)] pl-[3%] md:mask-none'>
@@ -407,8 +508,8 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
                                                                             <MateriaCard
                                                                                 materia={materia}
                                                                                 estado={progreso[materia.codigo]}
-                                                                                actualizarEstados={() => handleCambioDeEstado(materia.codigo)}
-                                                                                modo={modo}
+                                                                                detalles={progresoDetalles?.[materia.codigo]}
+                                                                                actualizarEstados={(target) => handleCambioDeEstado(materia.codigo, target)}
                                                                                 abrirInfo={() => abrirInfo(materia)}
                                                                                 vista={vista}
                                                                             />
@@ -436,6 +537,10 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
                 infoMateria={infoMateria}
                 materias={materias}
                 progreso={progreso}
+                progresoDetalles={progresoDetalles}
+                setProgresoDetalles={setProgresoDetalles}
+                cambioDeEstado={cambioDeEstado}
+                plan={plan}
                 onOpenChange={onDetailOpenChange}
             />
 
@@ -446,6 +551,16 @@ function MateriasList({ progreso, setProgreso, materias, isProgressSticky, plan 
                 isOpen={isConfirmationOpen}
                 onOpenChange={onConfirmationOpenChange}
                 onClose={onConfirmationClose}
+                targetState={targetStateModal}
+            />
+
+            {/* Modal de captura de datos por transición */}
+            <CapturaTransicionModal
+                isOpen={isCapturaOpen}
+                onOpenChange={onCapturaOpenChange}
+                tipo={capturaConfig.tipo}
+                materia={capturaConfig.materia}
+                onConfirm={handleCapturaConfirm}
             />
 
         </div >

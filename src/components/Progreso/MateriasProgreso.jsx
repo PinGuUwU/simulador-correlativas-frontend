@@ -1,6 +1,6 @@
-import { Card, CardBody, CardFooter, CardHeader } from '@heroui/card'
-import { Button, Chip, Popover, PopoverContent, PopoverTrigger, Progress, useDisclosure } from '@heroui/react'
-import React, { useState } from 'react'
+import { Card, CardBody } from '@heroui/card'
+import { CircularProgress, useDisclosure } from '@heroui/react'
+import React, { useEffect, useState } from 'react'
 import FiltroMateriasModal from './modals/FiltroMateriasModal'
 
 function MateriasProgreso({ progreso, materias }) {
@@ -94,6 +94,25 @@ function MateriasProgreso({ progreso, materias }) {
         }
     ]
 
+    const horasTotalesCarrera = materias.reduce((acc, m) => acc + (Number(m.horas_totales) || 0), 0)
+
+    const resumenStats = [
+        {
+            label: "Total Materias",
+            value: materiasTotales,
+            sublabel: "asignaturas",
+            icon: "fa-solid fa-book-bookmark",
+            color: "secondary"
+        },
+        {
+            label: "Carga Horaria",
+            value: horasTotalesCarrera,
+            sublabel: "horas totales",
+            icon: "fa-solid fa-clock-rotate-left",
+            color: "danger"
+        }
+    ]
+
     const calcularPorcentaje = (cant) => (materiasTotales > 0 ? (cant * 100) / materiasTotales : 0)
     const { isOpen, onOpen, onOpenChange } = useDisclosure()
     const {
@@ -108,83 +127,116 @@ function MateriasProgreso({ progreso, materias }) {
         setTitulo(titulo)
         onOpen()
 
-        // Agrego una entrada al historial para que el botón "atrás" cierre el modal
         window.history.pushState({ modalOpen: true }, "")
     }
 
-    // Manejo el evento de que en celu haga para atrás, que cierre el modal y no se salga de la página
-    React.useEffect(() => {
+    useEffect(() => {
         const handlePopState = () => {
-            // Si el modal de detalle está abierto, no cerrarmos el filtro (lo maneja su propio listener)
             if (!isDetailOpen) {
                 onOpenChange(false)
             }
         }
-
-        // Solo activamos el "escuchador" si el modal está abierto
         if (isOpen) {
             window.addEventListener("popstate", handlePopState)
         }
-
         return () => {
             window.removeEventListener("popstate", handlePopState)
         }
     }, [isOpen, onOpenChange, isDetailOpen])
 
     return (
-        <div className="grid grid-cols-1 min-[768px]:grid-cols-2 xl:grid-cols-4 gap-6 my-8">
-            {stats.map((stat, index) => (
-                <Card
-                    isPressable
-                    key={index}
-                    className={`${stat.accent} cursor-pointer shadow-sm hover:shadow-md transition-shadow duration-300 ${stat.bg}`}
-                    onClick={() => handleClick(stat.estado, stat.label)}
-                >
-                    <CardHeader className="pb-0 pt-4 px-5 items-center flex justify-between text-center">
-                        <p className="text-tiny uppercase font-bold text-default-600 tracking-wider">
-                            {stat.label}
-                        </p>
-                    </CardHeader>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-2 mb-6 uppercase tracking-wider">
+            {stats.map((stat, index) => {
+                const porcentaje = Math.round(calcularPorcentaje(stat.count))
+                const textColors = {
+                    primary: "text-primary",
+                    warning: "text-warning",
+                    success: "text-success",
+                    default: "text-default-500"
+                }
+                const glowColors = {
+                    primary: "shadow-primary/20",
+                    warning: "shadow-warning/20",
+                    success: "shadow-success/20",
+                    default: "shadow-default-300/20"
+                }
+                const textColorClass = textColors[stat.color] || "text-default-500"
+                const glowClass = glowColors[stat.color] || "shadow-default-300/20"
 
-                    <CardBody className="py-4 px-5 flex flex-row items-center justify-between overflow-visible">
-                        <div className="flex flex-col md:text-start max-[768px]:text-center max-[768px]:w-full">
-                            <p className="font-black  md:text-4xl text-default-800">
-                                {stat.count}
-                            </p>
-
-                            <div className='text-center'>
-                                <Chip
-                                    color={`${stat.color}`}
-                                    variant={`flat`}
-                                >
-                                    Horas totales: {stat.horas_totales}
-                                </Chip>
-                            </div>
-                        </div>
-
-                        {/* Contenedor del Icono Estilo "Neon" del prototipo */}
-                        <div className={`${stat.accent}  hidden min-[768px]:flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full border-2 shadow-[0_0_15px_rgba(var(--tw-shadow-color),0.4)]`}>
-                            <i className={`${stat.icon} text-lg`}></i>
-                        </div>
-                    </CardBody>
-
-                    <CardFooter className="px-5 pb-5">
-                        <div className="flex flex-col w-full gap-2">
-                            <div className="flex justify-between items-center text-[10px] font-bold text-default-600 uppercase">
-                                <span>Avance</span>
-                                <span>{Math.round(calcularPorcentaje(stat.count))}%</span>
-                            </div>
-                            <Progress
-                                aria-label={`Progreso ${stat.label}`}
+                return (
+                    <Card
+                        isPressable
+                        key={index}
+                        className={`bg-background/70 backdrop-blur-sm border border-default-200/60 hover:border-default-300/80 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${glowClass} w-full group`}
+                        onPress={() => handleClick(stat.estado, stat.label)}
+                    >
+                        <CardBody className="py-3 px-4 flex flex-row items-center gap-4 overflow-visible">
+                            <CircularProgress
+                                value={porcentaje}
+                                size="lg"
                                 color={stat.color}
-                                size="sm"
-                                value={calcularPorcentaje(stat.count)}
-                                className="max-w-md"
+                                showValueLabel={false}
+                                aria-label={`Progreso circular ${stat.label}`}
+                                classNames={{
+                                    svg: "w-10 h-10 drop-shadow-sm group-hover:scale-105 transition-transform duration-200",
+                                    track: "stroke-default-200/50",
+                                }}
                             />
-                        </div>
-                    </CardFooter>
-                </Card>
-            ))}
+
+                            <div className="flex flex-col text-left">
+                                <span className="text-[10px] sm:text-xs font-bold text-foreground/60 leading-tight">{stat.label}</span>
+                                <span className={`text-sm sm:text-base font-black ${textColorClass} tabular-nums`}>
+                                    {porcentaje}%
+                                </span>
+                                <span className="text-[9px] font-bold text-foreground/40 tabular-nums">{stat.count} mat.</span>
+                            </div>
+                        </CardBody>
+                    </Card>
+                )
+            })}
+
+            {/* Tarjetas de Resumen (Horas y Materias) */}
+            {resumenStats.map((resumen, index) => {
+                const colorMap = {
+                    secondary: {
+                        bg: "bg-secondary/10",
+                        border: "border-secondary/25",
+                        text: "text-secondary",
+                        value: "text-secondary",
+                        glow: "shadow-secondary/15"
+                    },
+                    danger: {
+                        bg: "bg-danger/10",
+                        border: "border-danger/25",
+                        text: "text-danger",
+                        value: "text-danger",
+                        glow: "shadow-danger/15"
+                    }
+                }
+                const styles = colorMap[resumen.color] || colorMap.secondary
+
+                return (
+                    <Card
+                        key={`resumen-${index}`}
+                        className={`bg-background/70 backdrop-blur-sm border border-default-200/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${styles.glow} transition-all duration-200 w-full`}
+                    >
+                        <CardBody className="py-3 px-4 flex flex-row items-center gap-4 overflow-visible">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${styles.bg} border ${styles.border} ${styles.text} shadow-sm`}>
+                                <i className={resumen.icon}></i>
+                            </div>
+                            <div className="flex flex-col text-left">
+                                <span className="text-[10px] sm:text-xs font-bold text-foreground/60 leading-tight">{resumen.label}</span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className={`text-sm sm:text-base font-black ${styles.value} tabular-nums`}>
+                                        {resumen.value}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-foreground/40">{resumen.sublabel}</span>
+                                </div>
+                            </div>
+                        </CardBody>
+                    </Card>
+                )
+            })}
 
             <FiltroMateriasModal
                 estado={seleccionada}
